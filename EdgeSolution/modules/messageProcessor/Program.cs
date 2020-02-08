@@ -55,8 +55,10 @@ namespace messageProcessor
         /// </summary>
         static async Task Init()
         {
-            MqttTransportSettings mqttSetting = new MqttTransportSettings(TransportType.Mqtt_Tcp_Only);
-            ITransportSettings[] settings = { mqttSetting };
+            // MqttTransportSettings mqttSetting = new MqttTransportSettings(TransportType.Mqtt_Tcp_Only);
+            // ITransportSettings[] settings = { mqttSetting };
+            AmqpTransportSettings amqpSetting = new AmqpTransportSettings(TransportType.Amqp_Tcp_Only);
+            ITransportSettings[] settings = { amqpSetting };
 
             // Open a connection to the Edge runtime
             ModuleClient ioTHubModuleClient = await ModuleClient.CreateFromEnvironmentAsync(settings);
@@ -72,7 +74,7 @@ namespace messageProcessor
         /// This method is called whenever a leaf device sent a message to EdgeHub. 
         /// It log the message, and send reply to leaf device.
         /// </summary>
-        static async Task<MessageResponse> PipeMessage(Message message, object userContext)
+        static Task<MessageResponse> PipeMessage(Message message, object userContext)
         {
             int counterValue = Interlocked.Increment(ref counter);
 
@@ -82,15 +84,15 @@ namespace messageProcessor
                 string messageString = Encoding.UTF8.GetString(messageBytes);
                 Console.WriteLine($"Received message: {counterValue}, Body: [{messageString}]");
                 var moduleClient = GetClientFromContext(userContext);
-                await SendReplyToDevice(moduleClient, message.ConnectionDeviceId, messageString).ConfigureAwait(false);
+                SendReplyToDevice(moduleClient, message.ConnectionDeviceId, messageString).GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
                 Logger.Log($"PipeMessage got exception {ex.Message}", LogSeverity.Error);
             }
             
-            return MessageResponse.Completed;
-        }
+            return Task.FromResult(MessageResponse.Completed);
+        }   
 
         static ModuleClient GetClientFromContext(object userContext)
         {
