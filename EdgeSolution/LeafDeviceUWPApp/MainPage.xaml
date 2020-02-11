@@ -1,0 +1,23 @@
+﻿<Page
+    x:Class="LeafDeviceUWPApp.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:LeafDeviceUWPApp"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+        <StackPanel Orientation="Vertical">
+            <TextBlock Text="Device to edge communication!" FontSize="36" Margin="4" TextAlignment="Center"/>
+            <TextBlock Text="Enter your message below" Margin="0,0,0,20"
+               TextWrapping="Wrap" Width="300"
+               TextAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
+            <TextBox x:Name="MessageTextBox" Margin="4" Width="250"/>
+            <Button x:Name="SendMessageButton" Content="Send message"
+        Click="SendMessageButton_Click" Width="120" HorizontalAlignment="Center" Margin="0,20"/>
+            <TextBlock x:Name="TextBlockSendReceiveStatus" Text="" FontSize="20" Margin="4" Foreground="Red" TextAlignment="Center" Height="595"/>
+        </StackPanel>
+    </Grid>
+</Page>

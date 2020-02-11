@@ -166,18 +166,17 @@ namespace LeafDeviceApp
 
         private static Task<MethodResponse> LeafDeviceMethodCallback(MethodRequest methodRequest, object userContext )
         {
-            Console.WriteLine($"Device direct method {methodRequest.Name} called.");
             if (methodRequest.Data != null)
             {
                 var data = Encoding.UTF8.GetString(methodRequest.Data);
-                Console.WriteLine($"Receved data: {data}");
+                Console.WriteLine($"Edge reply: {data}");
                 string jString = JsonConvert.SerializeObject("Success");
                 return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(jString), 200));
             }
             else
             {
-                Console.WriteLine("Receved data is empty.");
-                string jString = JsonConvert.SerializeObject("EmptyData");
+                Console.WriteLine("Edge reply: Empty");
+                string jString = JsonConvert.SerializeObject("Empty");
                 return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(jString), 400));
             }
         }
@@ -188,14 +187,15 @@ namespace LeafDeviceApp
         /// </summary>
         private static async Task SendMessage()
         {
-            string message = $"{++counter}:hello from leaf device!";
+            string message = $"Hi Edge, How are you doing!";
+            Console.WriteLine($"Device says: {message}");
             using (var eventMessage = new Message(Encoding.UTF8.GetBytes(message)))
             {
                 // Set the content type and encoding so the IoT Hub knows to treat the message body as JSON
                 eventMessage.ContentEncoding = "utf-8";
                 eventMessage.ContentType = "application/json";
                 await deviceClient.SendEventAsync(eventMessage);
-                Console.WriteLine($"Message {message} sent.");
+                
             }
         }
     }

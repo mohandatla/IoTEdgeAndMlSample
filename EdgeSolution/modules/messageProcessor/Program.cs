@@ -82,7 +82,7 @@ namespace messageProcessor
             {
                 byte[] messageBytes = message.GetBytes();
                 string messageString = Encoding.UTF8.GetString(messageBytes);
-                Console.WriteLine($"Received message: {counterValue}, Body: [{messageString}]");
+                Console.WriteLine($"Message Counter = {counterValue};Device Id={message.ConnectionDeviceId};Received message: {messageString}");
                 var moduleClient = GetClientFromContext(userContext);
                 SendReplyToDevice(moduleClient, message.ConnectionDeviceId, messageString).GetAwaiter().GetResult();
             }
@@ -111,11 +111,11 @@ namespace messageProcessor
         {
             try
             {
-                string replyMessage = $"{counter}: hello from edge!";
+                string replyMessage = $"Hi {deviceId}, Thank you for asking ::::{receivedMessage}::::";
                 string jString = JsonConvert.SerializeObject(replyMessage);
                 var methodRequest = new MethodRequest("LeafDeviceDirectMethod", Encoding.UTF8.GetBytes(jString));
                 var response = await moduleClient.InvokeMethodAsync(deviceId, methodRequest);
-                Logger.Log($"Invoked the direct method. status = {response.Status}");
+                Logger.Log($"Edge reply: {replyMessage}. Call status = {response.Status}");
             }
             catch (Exception ex)
             {
