@@ -24,13 +24,15 @@ namespace LeafDeviceUWPApp
             var data = Encoding.UTF8.GetString(methodRequest.Data);
             if (!String.IsNullOrEmpty(data))
             {
-                DisplayMessage($"Edge reply:{data}");
+                DisplayLogMessage($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received:{data}");
+                DisplayResponseMessage(data);
                 string jString = JsonConvert.SerializeObject("Success");
                 return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(jString), 200));
             }
             else
             {
-                DisplayMessage("Edge response:No reply");
+                DisplayLogMessage($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received:No reply");
+                DisplayResponseMessage("No reply");
                 string jString = JsonConvert.SerializeObject("EmptyData");
                 return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(jString), 400));
             }
@@ -40,7 +42,7 @@ namespace LeafDeviceUWPApp
         {
             try
             {
-                const string deviceConnectionString = "HostName=IotEdgeAndMlHub-gnfytbogtqjte.azure-devices.net;DeviceId=demoleafdevice;SharedAccessKey=0Dcf1CD9cgojck0BWlKUN4bj2N0KdWxnU0GRpCtFYto=;GatewayHostName=172.25.167.34";
+                const string deviceConnectionString = "HostName=IotEdgeAndMlHub-gnfytbogtqjte.azure-devices.net;DeviceId=demoleafdevice;SharedAccessKey=0Dcf1CD9cgojck0BWlKUN4bj2N0KdWxnU0GRpCtFYto=;GatewayHostName=172.21.168.199";
                 const string azureIotTestRootCertificateFilePath = "azure-iot-test-only.root.ca.cert.pem";
                 CertificateManager.InstallCACert(azureIotTestRootCertificateFilePath);
                 
@@ -49,14 +51,23 @@ namespace LeafDeviceUWPApp
             }
             catch (Exception ex)
             {
-                DisplayMessage($"Initialize() got exception.\nException message: {ex.Message}");
+                DisplayResponseMessage("Error occurred during Initialize");
+                DisplayLogMessage($"Initialize got exception.\nException message: {ex.Message}");
             }
         }
-        private async void DisplayMessage(string message)
+        private async void DisplayLogMessage(string message)
         {
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                TextBlockSendReceiveStatus.Text = message + "\n" + TextBlockSendReceiveStatus.Text;
+                TextBlockLog.Text = message + "\n" + TextBlockLog.Text;
+            });
+        }
+
+        private async void DisplayResponseMessage(string message)
+        {
+            await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                TextBlockMessage.Text = message;
             });
         }
 
@@ -85,7 +96,7 @@ namespace LeafDeviceUWPApp
         private void SendMessageButton_Click(object sender, RoutedEventArgs e)
         {
             string message = MessageTextBox.Text;
-            DisplayMessage($"Device says: {message}");
+            DisplayLogMessage($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent: {message}");
             SendEvent(_deviceClient, message);
         }
     }

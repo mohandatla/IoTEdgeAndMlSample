@@ -33,10 +33,10 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="LeafDeviceUWPApp.App">
       <uap:VisualElements
-        DisplayName="LeafDeviceUWPApp"
+        DisplayName="UWP-Edge interop sample"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png"
-        Description="LeafDeviceUWPApp"
+        Description="UWP application for sending message to edge gateway."
         BackgroundColor="transparent">
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"/>
         <uap:SplashScreen Image="Assets\SplashScreen.png" />

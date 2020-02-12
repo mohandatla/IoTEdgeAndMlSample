@@ -26,8 +26,6 @@ namespace messageProcessor
     class Program
     {
 
-        static int counter;
-
         static void Main(string[] args)
         {
             Init().Wait();
@@ -63,11 +61,9 @@ namespace messageProcessor
             // Open a connection to the Edge runtime
             ModuleClient ioTHubModuleClient = await ModuleClient.CreateFromEnvironmentAsync(settings);
             await ioTHubModuleClient.OpenAsync();
-            Logger.Log("IoT Hub module client initialized.");
 
             // Register callback to be called when a message is received by the module
             await ioTHubModuleClient.SetInputMessageHandlerAsync("leafDeviceInput", PipeMessage, ioTHubModuleClient);
-            Logger.Log("leafDeviceInput message handler is set.");
         }
 
         /// <summary>
@@ -76,13 +72,11 @@ namespace messageProcessor
         /// </summary>
         static Task<MessageResponse> PipeMessage(Message message, object userContext)
         {
-            int counterValue = Interlocked.Increment(ref counter);
-
             try
             {
                 byte[] messageBytes = message.GetBytes();
                 string messageString = Encoding.UTF8.GetString(messageBytes);
-                Console.WriteLine($"Message Counter = {counterValue};Device Id={message.ConnectionDeviceId};Received message: {messageString}");
+                Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received: {messageString}");
                 var moduleClient = GetClientFromContext(userContext);
                 SendReplyToDevice(moduleClient, message.ConnectionDeviceId, messageString).GetAwaiter().GetResult();
             }
@@ -111,11 +105,18 @@ namespace messageProcessor
         {
             try
             {
-                string replyMessage = $"Hi {deviceId}, Thank you for asking ::::{receivedMessage}::::";
+                string replyMessage = $"Hello {receivedMessage}!";
                 string jString = JsonConvert.SerializeObject(replyMessage);
                 var methodRequest = new MethodRequest("LeafDeviceDirectMethod", Encoding.UTF8.GetBytes(jString));
                 var response = await moduleClient.InvokeMethodAsync(deviceId, methodRequest);
-                Logger.Log($"Edge reply: {replyMessage}. Call status = {response.Status}");
+                if(response.Status == 200)
+                {
+                    Logger.Log($"{DateTime.Now.ToString("HH:mm:ss")} Sent: {replyMessage}.");
+                }
+                else
+                {
+                    Logger.Log($"Error occurred invoking LeafDeviceDirectMethod. error status code {response.Status}");
+                }
             }
             catch (Exception ex)
             {
