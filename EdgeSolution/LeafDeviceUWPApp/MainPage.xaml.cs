@@ -42,7 +42,7 @@ namespace LeafDeviceUWPApp
         {
             try
             {
-                const string deviceConnectionString = "HostName=IotEdgeAndMlHub-gnfytbogtqjte.azure-devices.net;DeviceId=demoleafdevice;SharedAccessKey=0Dcf1CD9cgojck0BWlKUN4bj2N0KdWxnU0GRpCtFYto=;GatewayHostName=172.21.168.199";
+                const string deviceConnectionString = "HostName=IotEdgeAndMlHub-gnfytbogtqjte.azure-devices.net;DeviceId=demoleafdevice;SharedAccessKey=0Dcf1CD9cgojck0BWlKUN4bj2N0KdWxnU0GRpCtFYto=;GatewayHostName=172.23.223.130";
                 const string azureIotTestRootCertificateFilePath = "azure-iot-test-only.root.ca.cert.pem";
                 CertificateManager.InstallCACert(azureIotTestRootCertificateFilePath);
                 
@@ -84,7 +84,7 @@ namespace LeafDeviceUWPApp
                 // Set the content type and encoding so the IoT Hub knows to treat the message body as JSON
                 eventMessage.ContentEncoding = "utf-8";
                 eventMessage.ContentType = "application/json";
-                await deviceClient.SendEventAsync(eventMessage);
+                await deviceClient.SendEventAsync(eventMessage).ConfigureAwait(false);
             }
         }
        public MainPage()
