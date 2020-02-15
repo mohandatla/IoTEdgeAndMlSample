@@ -76,9 +76,10 @@ namespace messageProcessor
             {
                 byte[] messageBytes = message.GetBytes();
                 string messageString = Encoding.UTF8.GetString(messageBytes);
-                Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received: {messageString}");
+                Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received from app: {messageString}");
                 var moduleClient = GetClientFromContext(userContext);
                 SendReplyToDevice(moduleClient, message.ConnectionDeviceId, messageString).GetAwaiter().GetResult();
+                SendMessageToCloud(moduleClient, messageString).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -104,14 +105,14 @@ namespace messageProcessor
         static async Task SendReplyToDevice(ModuleClient moduleClient, string deviceId, string receivedMessage)
         {
             try
-            {
+            {              
                 string replyMessage = $"Hello {receivedMessage}!";
                 string jString = JsonConvert.SerializeObject(replyMessage);
                 var methodRequest = new MethodRequest("LeafDeviceDirectMethod", Encoding.UTF8.GetBytes(jString));
                 var response = await moduleClient.InvokeMethodAsync(deviceId, methodRequest);
                 if(response.Status == 200)
                 {
-                    Logger.Log($"{DateTime.Now.ToString("HH:mm:ss")} Sent: {replyMessage}.");
+                    Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent to app: {replyMessage}.");
                 }
                 else
                 {
@@ -121,7 +122,18 @@ namespace messageProcessor
             catch (Exception ex)
             {
                 Logger.Log($"SendReplyToDevice got exception {ex.Message}", LogSeverity.Error);
-            }  
+            }
+        }
+
+        private static async Task SendMessageToCloud(ModuleClient moduleClient, string message)
+        {
+            using (var eventMessage = new Message(Encoding.UTF8.GetBytes(message)))
+            {
+                eventMessage.ContentEncoding = "utf-8";
+                eventMessage.ContentType = "application/json";
+                await moduleClient.SendEventAsync("cloudMessage", eventMessage).ConfigureAwait(false);
+                Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent to cloud: {message}");
+            }
         }
     }
 }
