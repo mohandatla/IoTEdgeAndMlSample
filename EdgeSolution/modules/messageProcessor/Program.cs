@@ -22,6 +22,8 @@ namespace messageProcessor
     using Microsoft.Azure.Devices.Client;
     using Microsoft.Azure.Devices.Client.Transport.Mqtt;
     using Newtonsoft.Json;
+    using System.Net;
+    using System.Net.Http;
 
     class Program
     {
@@ -64,6 +66,8 @@ namespace messageProcessor
 
             // Register callback to be called when a message is received by the module
             await ioTHubModuleClient.SetInputMessageHandlerAsync("leafDeviceInput", PipeMessage, ioTHubModuleClient);
+
+            await CallImageClassifier(ioTHubModuleClient).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -133,6 +137,52 @@ namespace messageProcessor
                 eventMessage.ContentType = "application/json";
                 await moduleClient.SendEventAsync("cloudMessage", eventMessage).ConfigureAwait(false);
                 Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent to cloud: {message}");
+            }
+        }
+
+        private static async Task CallImageClassifier(ModuleClient moduleClient)
+        {
+            try{
+                Logger.Log("Invoked CallImageClassifier");
+
+                string message = "response";
+
+                using(var client = new HttpClient())
+                {          
+                    using(var request = new HttpRequestMessage())
+                    {
+                        request.Method = HttpMethod.Post;
+                        request.RequestUri = new Uri("http://fruitclassifier/image");
+                        request.Headers.TryAddWithoutValidation("Content-Type", "application/octet-stream");
+                        client.Timeout = TimeSpan.FromSeconds(60);
+                        var fileContent = File.ReadAllBytes("test_image.jpg");
+                        if(fileContent != null)
+                        {
+                            Logger.Log("file content is not null.");
+                        }
+                        else
+                        {
+                            Logger.Log("file content is null.");
+                        }
+                        request.Content = new ByteArrayContent(fileContent);
+                        var response = await client.SendAsync(request);
+                        Logger.Log("Sent successful.");
+                        message += $"Status Code={response.StatusCode}" + await response.Content.ReadAsStringAsync();
+                        Logger.Log(message);
+                    }
+                }
+                
+                using (var eventMessage = new Message(Encoding.UTF8.GetBytes(message)))
+                {
+                    eventMessage.ContentEncoding = "utf-8";
+                    eventMessage.ContentType = "application/json";
+                    await moduleClient.SendEventAsync("cloudMessage", eventMessage).ConfigureAwait(false);
+                    Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent to cloud: {message}");
+                }
+            }
+             catch (Exception ex)
+            {
+                Logger.Log($"CallImageClassifier got exception {ex.Message}", LogSeverity.Error);
             }
         }
     }
