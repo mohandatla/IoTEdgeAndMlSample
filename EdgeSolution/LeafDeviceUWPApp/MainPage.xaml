@@ -23,6 +23,7 @@
         <StackPanel Orientation="Horizontal" Grid.Column="1" Grid.Row="0" BorderThickness="0" BorderBrush="Black" HorizontalAlignment="Center" VerticalAlignment="Center">
             <TextBox BorderBrush="Black" BorderThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center" x:Name="MessageTextBox" FontSize="25" PlaceholderText="Enter your name" Width="300" MaxLength="20" Foreground="Gray"></TextBox>
             <Button Margin="20" x:Name="SendMessageButton" Content="Send" HorizontalAlignment="Center" VerticalAlignment="Center" Click="SendMessageButton_Click"></Button>
+            <Button Margin="20" x:Name="SendFrameButton" Content="Send frame" HorizontalAlignment="Center" VerticalAlignment="Center" Click="SendFrameButton_Click"></Button>
         </StackPanel>
         <TextBlock Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="40" x:Name="TextBlockMessage"></TextBlock>
         <TextBlock Grid.Row="2" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Text="Logs" FontSize="25"></TextBlock>

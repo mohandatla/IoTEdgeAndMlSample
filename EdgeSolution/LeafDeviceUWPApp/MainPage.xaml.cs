@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Windows.UI.Core;
 using Newtonsoft.Json;
+using System.IO;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -98,6 +99,15 @@ namespace LeafDeviceUWPApp
             string message = MessageTextBox.Text;
             DisplayLogMessage($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent: {message}");
             SendEvent(_deviceClient, message);
+        }
+
+        private void SendFrameButton_Click(object sender, RoutedEventArgs e)
+        {
+            const string filePath = "pear.jpg";
+            DisplayLogMessage($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent image: {filePath}");
+            var fileContent = File.ReadAllBytes(filePath);
+            string base64Message = Convert.ToBase64String(fileContent);
+            SendEvent(_deviceClient, base64Message);
         }
     }
 }

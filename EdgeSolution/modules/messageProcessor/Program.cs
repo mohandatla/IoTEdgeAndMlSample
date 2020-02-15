@@ -66,8 +66,6 @@ namespace messageProcessor
 
             // Register callback to be called when a message is received by the module
             await ioTHubModuleClient.SetInputMessageHandlerAsync("leafDeviceInput", PipeMessage, ioTHubModuleClient);
-
-            await CallImageClassifier(ioTHubModuleClient).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -79,11 +77,20 @@ namespace messageProcessor
             try
             {
                 byte[] messageBytes = message.GetBytes();
-                string messageString = Encoding.UTF8.GetString(messageBytes);
-                Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received from app: {messageString}");
-                var moduleClient = GetClientFromContext(userContext);
-                SendReplyToDevice(moduleClient, message.ConnectionDeviceId, messageString).GetAwaiter().GetResult();
-                SendMessageToCloud(moduleClient, messageString).ConfigureAwait(false);
+                if(messageBytes != null)
+                {
+                    string messageString = "image received.";
+                    var moduleClient = GetClientFromContext(userContext);
+                    SendReplyToDevice(moduleClient, message.ConnectionDeviceId, messageString).GetAwaiter().GetResult();
+                    Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received image from app: {messageString}");
+                    SendMessageToCloud(moduleClient, messageString).ConfigureAwait(false);
+                    byte[] rawMessageBytes = System.Convert.FromBase64String(Encoding.UTF8.GetString(messageBytes));
+                    CallImageClassifier(moduleClient, message.ConnectionDeviceId, rawMessageBytes);
+                }
+                else
+                {
+                    Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received empty data from app.");
+                }                
             }
             catch (Exception ex)
             {
@@ -140,7 +147,7 @@ namespace messageProcessor
             }
         }
 
-        private static async Task CallImageClassifier(ModuleClient moduleClient)
+        private static async Task CallImageClassifier(ModuleClient moduleClient, string deviceId, byte[] fileContent)
         {
             try{
                 Logger.Log("Invoked CallImageClassifier");
@@ -155,7 +162,7 @@ namespace messageProcessor
                         request.RequestUri = new Uri("http://fruitclassifier/image");
                         request.Headers.TryAddWithoutValidation("Content-Type", "application/octet-stream");
                         client.Timeout = TimeSpan.FromSeconds(60);
-                        var fileContent = File.ReadAllBytes("test_image.jpg");
+                        //var fileContent = File.ReadAllBytes("test_image.jpg");
                         if(fileContent != null)
                         {
                             Logger.Log("file content is not null.");
@@ -168,10 +175,10 @@ namespace messageProcessor
                         var response = await client.SendAsync(request);
                         Logger.Log("Sent successful.");
                         message += $"Status Code={response.StatusCode}" + await response.Content.ReadAsStringAsync();
-                        Logger.Log(message);
+                        Logger.Log(message);                        
                     }
                 }
-                
+
                 using (var eventMessage = new Message(Encoding.UTF8.GetBytes(message)))
                 {
                     eventMessage.ContentEncoding = "utf-8";
@@ -179,6 +186,8 @@ namespace messageProcessor
                     await moduleClient.SendEventAsync("cloudMessage", eventMessage).ConfigureAwait(false);
                     Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent to cloud: {message}");
                 }
+
+                SendReplyToDevice(moduleClient, deviceId, message);
             }
              catch (Exception ex)
             {
