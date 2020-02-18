@@ -47,5 +47,8 @@
   <Capabilities>
     <Capability Name="internetClient" />
     <iot:Capability Name="systemManagement"/>
+    <uap:Capability Name="picturesLibrary"/>
+    <DeviceCapability Name="webcam"/>
+    <DeviceCapability Name="microphone"/>
   </Capabilities>
 </Package>
