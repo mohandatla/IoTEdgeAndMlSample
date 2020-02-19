@@ -117,13 +117,12 @@ namespace messageProcessor
         {
             try
             {              
-                string replyMessage = $"Hello {receivedMessage}!";
-                string jString = JsonConvert.SerializeObject(replyMessage);
+                string jString = JsonConvert.SerializeObject(receivedMessage);
                 var methodRequest = new MethodRequest("LeafDeviceDirectMethod", Encoding.UTF8.GetBytes(jString));
                 var response = await moduleClient.InvokeMethodAsync(deviceId, methodRequest);
                 if(response.Status == 200)
                 {
-                    Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent to app: {replyMessage}.");
+                    Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent to app: {receivedMessage}.");
                 }
                 else
                 {

@@ -56,7 +56,7 @@ namespace LeafDeviceUWPApp
                 {
                     try
                     {
-                        var o = JObject.Parse(data);
+                        var o = JObject.Parse(JsonConvert.DeserializeObject<JValue>(data).ToString());
                         if (o != null)
                         {
                             var maxValue = (from predictionResult in o["predictions"]
@@ -64,19 +64,18 @@ namespace LeafDeviceUWPApp
                                             select predictionResult).First();
                             string tag = (string)maxValue["tagName"];
                             float probability = (float)maxValue["probability"];
-                            data = $"{tag}:{probability*100}";
+                            data = $"{tag}:{probability * 100}";
                         }
+                        ewh.Set();
                     }
                     catch (Exception ex)
                     {
                         DisplayLogMessage(ex.Message);
                     }
                 }
-
                 DisplayLogMessage($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received:{data}");
                 DisplayResponseMessage(data);
                 string jString = JsonConvert.SerializeObject("Success");
-                ewh.Set();
                 return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(jString), 200));
             }
             else
@@ -260,16 +259,16 @@ namespace LeafDeviceUWPApp
             });
         }
 
-        private void SendFrames()
+        private async void SendFrames()
         {
             ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
             _started = true;
             do
             {
-                Task t = TakePhotoAsync();
+                await TakePhotoAsync();
                 ewh.WaitOne();
                 // to avoid sync issues.
-                Task.Delay(1).GetAwaiter().GetResult();
+                Task.Delay(500).GetAwaiter().GetResult();
             } while (_started);
             PhotoButton.Content = "Start";
         }
@@ -278,8 +277,7 @@ namespace LeafDeviceUWPApp
         {
             if (PhotoButton.Content.ToString() == "Start")
             {
-                Task t = new Task(() => SendFrames());
-                t.Start();
+                SendFrames();
                 PhotoButton.Content = "Stop";
             }
             else
