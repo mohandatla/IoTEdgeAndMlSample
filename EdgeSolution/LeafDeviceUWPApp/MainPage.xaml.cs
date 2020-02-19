@@ -36,21 +36,47 @@ using Microsoft.Azure.Devices.Client;
 using System.Text;
 using Newtonsoft.Json;
 using System.IO;
+using Newtonsoft.Json.Linq;
+using System.Threading;
 
 namespace LeafDeviceUWPApp
 {
     public sealed partial class MainPage : Page
     {
         private DeviceClient _deviceClient;
+        private static EventWaitHandle ewh = null;
+        private static bool _started = false;
 
         private Task<MethodResponse> HelloWorldDirectMethodCallback(MethodRequest methodRequest, object userContext)
         {
             var data = Encoding.UTF8.GetString(methodRequest.Data);
             if (!String.IsNullOrEmpty(data))
             {
+                if(data.Contains("predictions"))
+                {
+                    try
+                    {
+                        var o = JObject.Parse(data);
+                        if (o != null)
+                        {
+                            var maxValue = (from predictionResult in o["predictions"]
+                                            orderby (float)predictionResult["probability"] descending
+                                            select predictionResult).First();
+                            string tag = (string)maxValue["tagName"];
+                            float probability = (float)maxValue["probability"];
+                            data = $"{tag}:{probability*100}";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        DisplayLogMessage(ex.Message);
+                    }
+                }
+
                 DisplayLogMessage($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received:{data}");
                 DisplayResponseMessage(data);
                 string jString = JsonConvert.SerializeObject("Success");
+                ewh.Set();
                 return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(jString), 200));
             }
             else
@@ -66,7 +92,7 @@ namespace LeafDeviceUWPApp
         {
             try
             {
-                const string deviceConnectionString = "HostName=IotEdgeAndMlHub-gnfytbogtqjte.azure-devices.net;DeviceId=mldemoleafdevice;SharedAccessKey=WjBcoa8KaW7EzX3Vkvzln1l3dSMBp1cPkEkTjhB5og8=;GatewayHostName=172.19.56.71";
+                const string deviceConnectionString = "HostName=IotEdgeAndMlHub-gnfytbogtqjte.azure-devices.net;DeviceId=mldemoleafdevice;SharedAccessKey=WjBcoa8KaW7EzX3Vkvzln1l3dSMBp1cPkEkTjhB5og8=;GatewayHostName=172.21.255.184";
                 const string azureIotTestRootCertificateFilePath = "azure-iot-test-only.root.ca.cert.pem";
                 CertificateManager.InstallCACert(azureIotTestRootCertificateFilePath);
 
@@ -92,7 +118,7 @@ namespace LeafDeviceUWPApp
         {
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                //TextBlockMessage.Text = message;
+                TextBlockPredictions.Text = message;
             });
         }
 
@@ -234,9 +260,33 @@ namespace LeafDeviceUWPApp
             });
         }
 
-        private async void SendFrameButton_Click(object sender, RoutedEventArgs e)
+        private void SendFrames()
         {
-            await TakePhotoAsync();
+            ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
+            _started = true;
+            do
+            {
+                Task t = TakePhotoAsync();
+                ewh.WaitOne();
+                // to avoid sync issues.
+                Task.Delay(1).GetAwaiter().GetResult();
+            } while (_started);
+            PhotoButton.Content = "Start";
+        }
+
+        private void SendFramesButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (PhotoButton.Content.ToString() == "Start")
+            {
+                Task t = new Task(() => SendFrames());
+                t.Start();
+                PhotoButton.Content = "Stop";
+            }
+            else
+            {
+                _started = false;
+                PhotoButton.Content = "Stopping";
+            }
         }
 
         private async void VideoButton_Click(object sender, RoutedEventArgs e)
@@ -369,11 +419,11 @@ namespace LeafDeviceUWPApp
         private void UpdateButtonOrientation()
         {
             // Rotate the buttons in the UI to match the rotation of the device
-            var angle = CameraRotationHelper.ConvertSimpleOrientationToClockwiseDegrees(_rotationHelper.GetUIOrientation());
-            var transform = new RotateTransform { Angle = angle };
+            // var angle = CameraRotationHelper.ConvertSimpleOrientationToClockwiseDegrees(_rotationHelper.GetUIOrientation());
+            // var transform = new RotateTransform { Angle = angle };
 
             // The RenderTransform is safe to use (i.e. it won't cause layout issues) in this case, because these buttons have a 1:1 aspect ratio
-            PhotoButton.RenderTransform = transform;
+            // PhotoButton.RenderTransform = transform;
             // VideoButton.RenderTransform = transform;
         }
 

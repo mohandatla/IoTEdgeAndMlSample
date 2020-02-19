@@ -85,7 +85,7 @@ namespace messageProcessor
                     Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received image from app: {messageString}");
                     SendMessageToCloud(moduleClient, messageString).ConfigureAwait(false);
                     byte[] rawMessageBytes = System.Convert.FromBase64String(Encoding.UTF8.GetString(messageBytes));
-                    CallImageClassifier(moduleClient, message.ConnectionDeviceId, rawMessageBytes);
+                    Task t = CallImageClassifier(moduleClient, message.ConnectionDeviceId, rawMessageBytes);
                 }
                 else
                 {
@@ -152,7 +152,7 @@ namespace messageProcessor
             try{
                 Logger.Log("Invoked CallImageClassifier");
 
-                string message = "response";
+                string message = "";
 
                 using(var client = new HttpClient())
                 {          
@@ -172,10 +172,9 @@ namespace messageProcessor
                             Logger.Log("file content is null.");
                         }
                         request.Content = new ByteArrayContent(fileContent);
-                        var response = await client.SendAsync(request);
-                        Logger.Log("Sent successful.");
-                        message += $"Status Code={response.StatusCode}" + await response.Content.ReadAsStringAsync();
-                        Logger.Log(message);                        
+                        var response = await client.SendAsync(request);                      
+                        message = await response.Content.ReadAsStringAsync();
+                        Logger.Log("Response from classifier: {message}");
                     }
                 }
 
@@ -187,7 +186,7 @@ namespace messageProcessor
                     Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent to cloud: {message}");
                 }
 
-                SendReplyToDevice(moduleClient, deviceId, message);
+                Task t = SendReplyToDevice(moduleClient, deviceId, message);
             }
              catch (Exception ex)
             {
