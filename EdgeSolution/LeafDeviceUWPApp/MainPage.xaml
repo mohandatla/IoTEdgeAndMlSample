@@ -17,21 +17,21 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="1*"></RowDefinition>
                 <RowDefinition Height="4*"></RowDefinition>
-                <RowDefinition Height="1*"></RowDefinition>
+                <RowDefinition Height="2*"></RowDefinition>
             </Grid.RowDefinitions>
-            <Button  Grid.Row="0" Name="PhotoButton" Content="Start" HorizontalAlignment="Center" VerticalAlignment="Center" Click="SendFramesButton_Click" Background="Gray" Foreground="Black" ></Button>
+            <Button  Grid.Row="0" Name="PhotoButton" Content="Start" HorizontalAlignment="Center" VerticalAlignment="Center" Click="SendFramesButton_Click" Background="Gray" Foreground="Blue" Width="200" ></Button>
             <StackPanel Grid.Row="1" BorderBrush="Black" BorderThickness="0" Margin="2">
             <!--Camera preview-->
                 <CaptureElement Name="PreviewControl" Stretch="Uniform"/>
             </StackPanel>
-            <TextBlock Grid.Row="2" x:Name="TextBlockPredictions" Foreground="Blue" FontSize="20" Text="Apple:100%"></TextBlock>
+            <TextBlock Grid.Row="2" x:Name="TextBlockPredictions" Foreground="Blue" FontSize="60" Text="" HorizontalAlignment="Center"></TextBlock>
         </Grid>
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="1*"></RowDefinition>
-                <RowDefinition Height="8*"></RowDefinition>
+                <RowDefinition Height="20*"></RowDefinition>
             </Grid.RowDefinitions>
-            <TextBlock Grid.Row ="0" HorizontalAlignment="Center" VerticalAlignment="Top" Text="Logs" FontSize="20" Foreground="Blue"></TextBlock>
+            <TextBlock Grid.Row ="0" HorizontalAlignment="Center" VerticalAlignment="Top" Text="Logs" FontSize="30" Foreground="Blue"></TextBlock>
             <ScrollViewer
                 Grid.Row ="1"
                 VerticalAlignment="Top"
@@ -39,11 +39,12 @@
                 VerticalScrollBarVisibility="Auto"
                 VerticalScrollMode="Auto"
                 IsTabStop="True"
-                BorderThickness="0"
+                BorderThickness="1"
                 BorderBrush="Black"
-                Margin="5">
-                <StackPanel>
-                    <TextBlock x:Name="TextBlockLog" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="12" Visibility="Visible" Foreground="Gray" Text="" TextWrapping="Wrap"></TextBlock>
+                Margin="5"
+                Height="900">
+                <StackPanel >
+                    <TextBlock x:Name="TextBlockLog" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="26" Visibility="Visible" Foreground="Gray" Text="" TextWrapping="Wrap"></TextBlock>
                 </StackPanel>
             </ScrollViewer>
         </Grid>

@@ -268,7 +268,7 @@ namespace LeafDeviceUWPApp
                 await TakePhotoAsync();
                 ewh.WaitOne();
                 // to avoid sync issues.
-                Task.Delay(500).GetAwaiter().GetResult();
+                Task.Delay(1).GetAwaiter().GetResult();
             } while (_started);
             PhotoButton.Content = "Start";
         }

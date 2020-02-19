@@ -171,9 +171,10 @@ namespace messageProcessor
                             Logger.Log("file content is null.");
                         }
                         request.Content = new ByteArrayContent(fileContent);
+                        Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Request to classifier: {message}");
                         var response = await client.SendAsync(request);                      
                         message = await response.Content.ReadAsStringAsync();
-                        Logger.Log("Response from classifier: {message}");
+                        Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Response from classifier: {message}");
                     }
                 }
 
