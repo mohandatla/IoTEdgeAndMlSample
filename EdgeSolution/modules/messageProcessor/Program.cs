@@ -74,23 +74,32 @@ namespace messageProcessor
         /// </summary>
         static Task<MessageResponse> PipeMessage(Message message, object userContext)
         {
+            string messageId = message.MessageId == null ? "": message.MessageId;
+            var moduleClient = GetClientFromContext(userContext);
+
             try
             {
-                byte[] messageBytes = message.GetBytes();
-                if(messageBytes != null)
+                if(message.ContentType == "image/jpeg")
                 {
-                    string messageString = "image received.";
-                    var moduleClient = GetClientFromContext(userContext);
-                    SendReplyToDevice(moduleClient, message.ConnectionDeviceId, messageString).GetAwaiter().GetResult();
-                    Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received image from app: {messageString}");
-                    SendMessageToCloud(moduleClient, messageString).ConfigureAwait(false);
-                    byte[] rawMessageBytes = System.Convert.FromBase64String(Encoding.UTF8.GetString(messageBytes));
-                    Task t = CallImageClassifier(moduleClient, message.ConnectionDeviceId, rawMessageBytes);
+                    byte[] messageBytes = message.GetBytes();
+                    if(messageBytes != null)
+                    {
+                        Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received image from app: {messageId}");
+                        byte[] rawMessageBytes = System.Convert.FromBase64String(Encoding.UTF8.GetString(messageBytes));
+                        Task t = CallImageClassifier(moduleClient, message.ConnectionDeviceId, messageId, rawMessageBytes);
+                    }
+                    else
+                    {
+                        Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received empty data from app.");
+                    }
                 }
                 else
                 {
-                    Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received empty data from app.");
-                }                
+                    string messageString = Encoding.UTF8.GetString(message.GetBytes());
+                    Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Received message {messageString} from app: {messageId}");
+                    var cloudTask = SendMessageToCloud(moduleClient, messageString, messageId);
+                    var deviceTask = SendReplyToDevice(moduleClient, message.ConnectionDeviceId, "Hello from edge!");
+                }
             }
             catch (Exception ex)
             {
@@ -98,7 +107,7 @@ namespace messageProcessor
             }
             
             return Task.FromResult(MessageResponse.Completed);
-        }   
+        }
 
         static ModuleClient GetClientFromContext(object userContext)
         {
@@ -116,7 +125,7 @@ namespace messageProcessor
         static async Task SendReplyToDevice(ModuleClient moduleClient, string deviceId, string receivedMessage)
         {
             try
-            {              
+            {
                 string jString = JsonConvert.SerializeObject(receivedMessage);
                 var methodRequest = new MethodRequest("LeafDeviceDirectMethod", Encoding.UTF8.GetBytes(jString));
                 var response = await moduleClient.InvokeMethodAsync(deviceId, methodRequest);
@@ -135,22 +144,22 @@ namespace messageProcessor
             }
         }
 
-        private static async Task SendMessageToCloud(ModuleClient moduleClient, string message)
+        private static async Task SendMessageToCloud(ModuleClient moduleClient, string message, string messageId)
         {
             using (var eventMessage = new Message(Encoding.UTF8.GetBytes(message)))
             {
                 eventMessage.ContentEncoding = "utf-8";
                 eventMessage.ContentType = "application/json";
+                eventMessage.MessageId = messageId;
                 await moduleClient.SendEventAsync("cloudMessage", eventMessage).ConfigureAwait(false);
-                Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent to cloud: {message}");
+                Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent to cloud: {messageId}{message}");
             }
         }
 
-        private static async Task CallImageClassifier(ModuleClient moduleClient, string deviceId, byte[] fileContent)
+        private static async Task CallImageClassifier(ModuleClient moduleClient, string deviceId, string messageId, byte[] fileContent)
         {
             try{
                 Logger.Log("Invoked CallImageClassifier");
-
                 string message = "";
 
                 using(var client = new HttpClient())
@@ -161,32 +170,16 @@ namespace messageProcessor
                         request.RequestUri = new Uri("http://fruitclassifier/image");
                         request.Headers.TryAddWithoutValidation("Content-Type", "application/octet-stream");
                         client.Timeout = TimeSpan.FromSeconds(60);
-                        //var fileContent = File.ReadAllBytes("test_image.jpg");
-                        if(fileContent != null)
-                        {
-                            Logger.Log("file content is not null.");
-                        }
-                        else
-                        {
-                            Logger.Log("file content is null.");
-                        }
                         request.Content = new ByteArrayContent(fileContent);
-                        Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Request to classifier: {message}");
-                        var response = await client.SendAsync(request);                      
+                        Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Request to classifier: {messageId}");
+                        var response = await client.SendAsync(request);
                         message = await response.Content.ReadAsStringAsync();
-                        Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Response from classifier: {message}");
+                        Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Response from classifier: {messageId}{message}");
                     }
                 }
 
-                using (var eventMessage = new Message(Encoding.UTF8.GetBytes(message)))
-                {
-                    eventMessage.ContentEncoding = "utf-8";
-                    eventMessage.ContentType = "application/json";
-                    await moduleClient.SendEventAsync("cloudMessage", eventMessage).ConfigureAwait(false);
-                    Logger.Log($"{DateTime.Now.ToUniversalTime().ToString("HH:mm:ss")} Sent to cloud: {message}");
-                }
-
-                Task t = SendReplyToDevice(moduleClient, deviceId, message);
+                var cloudTask = SendMessageToCloud(moduleClient, message, messageId);
+                Task deviceTask = SendReplyToDevice(moduleClient, deviceId, message);
             }
              catch (Exception ex)
             {

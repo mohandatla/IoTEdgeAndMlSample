@@ -64,7 +64,7 @@ namespace LeafDeviceUWPApp
                                             select predictionResult).First();
                             string tag = (string)maxValue["tagName"];
                             float probability = (float)maxValue["probability"];
-                            data = $"{tag}:{probability * 100}";
+                            data = $"tagname: {tag}\nprobability:{probability:#0.##%}";
                         }
                         ewh.Set();
                     }
@@ -133,7 +133,8 @@ namespace LeafDeviceUWPApp
             {
                 // Set the content type and encoding so the IoT Hub knows to treat the message body as JSON
                 eventMessage.ContentEncoding = "utf-8";
-                eventMessage.ContentType = "application/json";
+                eventMessage.ContentType = "image/jpeg";
+                eventMessage.MessageId = Guid.NewGuid().ToString("D");
                 await deviceClient.SendEventAsync(eventMessage).ConfigureAwait(false);
             }
         }
@@ -491,38 +492,35 @@ namespace LeafDeviceUWPApp
         /// <returns></returns>
         private async Task TakePhotoAsync()
         {
-            // While taking a photo, keep the video button enabled only if the camera supports simultaneously taking pictures and recording video
-            //VideoButton.IsEnabled = _mediaCapture.MediaCaptureSettings.ConcurrentRecordAndPhotoSupported;
-
-            // Make the button invisible if it's disabled, so it's obvious it cannot be interacted with
-            //VideoButton.Opacity = VideoButton.IsEnabled ? 1 : 0;
-
-            var stream = new InMemoryRandomAccessStream();
-
-            Debug.WriteLine("Taking photo...");
-            await _mediaCapture.CapturePhotoToStreamAsync(ImageEncodingProperties.CreateJpeg(),   stream);
 
             try
             {
-                var file = await _captureFolder.CreateFileAsync("SimplePhoto.jpg", CreationCollisionOption.GenerateUniqueName);
-                Debug.WriteLine("Photo taken! Saving to " + file.Path);
+                var stream = new InMemoryRandomAccessStream();
+                Debug.WriteLine("Taking photo...");
+                await _mediaCapture.CapturePhotoToStreamAsync(ImageEncodingProperties.CreateJpeg(), stream);
+
+
 
                 var photoOrientation = CameraRotationHelper.ConvertSimpleOrientationToPhotoOrientation(_rotationHelper.GetCameraCaptureOrientation());
 
-                await ReencodeAndSavePhotoAsync(stream, file, photoOrientation);
-                // await stream.FlushAsync();
-                stream.Dispose();
-                Debug.WriteLine("Photo saved!");
+                var decoder = await BitmapDecoder.CreateAsync(stream);
+                var encoder = await BitmapEncoder.CreateForInPlacePropertyEncodingAsync(decoder);
+                var properties = new BitmapPropertySet { { "System.Photo.Orientation", new BitmapTypedValue(photoOrientation, PropertyType.UInt16) } };
+                await encoder.BitmapProperties.SetPropertiesAsync(properties);
+                await encoder.FlushAsync();
+                Debug.WriteLine("Photo saved in stream with orientation set!");
 
-                string filePath = file.Path.Substring(file.Path.LastIndexOf("\\"));
-                var file2 = await _captureFolder.GetFileAsync(filePath);
-                var fileContent = File.ReadAllBytes(file.Path);
-                string base64Message = Convert.ToBase64String(fileContent);
-                SendEvent(_deviceClient, base64Message);
+                using (var dr = new DataReader(stream.GetInputStreamAt(0)))
+                {
+                    var bytes = new byte[stream.Size];
+                    await dr.LoadAsync((uint)stream.Size);
+                    dr.ReadBytes(bytes);
+                    SendEvent(_deviceClient, Convert.ToBase64String(bytes));
+                }
+                stream.Dispose();
             }
             catch (Exception ex)
             {
-                // File I/O errors are reported as exceptions
                 Debug.WriteLine("Exception when taking a photo: " + ex.ToString());
             }
         }
@@ -767,30 +765,6 @@ namespace LeafDeviceUWPApp
             return desiredDevice ?? allVideoDevices.FirstOrDefault();
         }
 
-        /// <summary>
-        /// Applies the given orientation to a photo stream and saves it as a StorageFile
-        /// </summary>
-        /// <param name="stream">The photo stream</param>
-        /// <param name="file">The StorageFile in which the photo stream will be saved</param>
-        /// <param name="photoOrientation">The orientation metadata to apply to the photo</param>
-        /// <returns></returns>
-        private static async Task ReencodeAndSavePhotoAsync(IRandomAccessStream stream, StorageFile file, PhotoOrientation photoOrientation)
-        {
-            using (var inputStream = stream)
-            {
-                var decoder = await BitmapDecoder.CreateAsync(inputStream);
-
-                using (var outputStream = await file.OpenAsync(FileAccessMode.ReadWrite))
-                {
-                    var encoder = await BitmapEncoder.CreateForTranscodingAsync(outputStream, decoder);
-
-                    var properties = new BitmapPropertySet { { "System.Photo.Orientation", new BitmapTypedValue(photoOrientation, PropertyType.UInt16) } };
-
-                    await encoder.BitmapProperties.SetPropertiesAsync(properties);
-                    await encoder.FlushAsync();
-                }
-            }
-        }
 
         #endregion Helper functions
 
