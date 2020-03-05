@@ -91,7 +91,7 @@ namespace DeviceCustomVisionUWPApp
         {
             try
             {
-                const string deviceConnectionString = "HostName=IotEdgeAndMlHub-gnfytbogtqjte.azure-devices.net;DeviceId=mldemoleafdevice;SharedAccessKey=WjBcoa8KaW7EzX3Vkvzln1l3dSMBp1cPkEkTjhB5og8=;GatewayHostName=172.26.122.247";
+                const string deviceConnectionString = "HostName=IotEdgeAndMlHub-gnfytbogtqjte.azure-devices.net;DeviceId=mldemoleafdevice;SharedAccessKey=WjBcoa8KaW7EzX3Vkvzln1l3dSMBp1cPkEkTjhB5og8=;GatewayHostName=10.137.184.230";
                 const string azureIotTestRootCertificateFilePath = "azure-iot-test-only.root.ca.cert.pem";
                 CertificateManager.InstallCACert(azureIotTestRootCertificateFilePath);
 
