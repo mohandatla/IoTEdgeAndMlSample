@@ -159,8 +159,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\LeafDeviceApp\edgeDeviceTestCertificates\certs\azure-iot-test-only.root.ca.cert.pem">
-      <Link>azure-iot-test-only.root.ca.cert.pem</Link>
+    <None Include="azure-iot-test-only.root.ca.cert.pem">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

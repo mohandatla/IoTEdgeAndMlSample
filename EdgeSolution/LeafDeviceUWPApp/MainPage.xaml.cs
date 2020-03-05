@@ -42,10 +42,10 @@ namespace LeafDeviceUWPApp
         {
             try
             {
-                const string deviceConnectionString = "HostName=IotEdgeAndMlHub-gnfytbogtqjte.azure-devices.net;DeviceId=demoleafdevice;SharedAccessKey=0Dcf1CD9cgojck0BWlKUN4bj2N0KdWxnU0GRpCtFYto=;GatewayHostName=172.23.223.130";
+                const string deviceConnectionString = "HostName=IotEdgeAndMlHub-gnfytbogtqjte.azure-devices.net;DeviceId=textleaf2;SharedAccessKey=OVecBJc3h9oG2TycXVk5nPEL3366a2H2tTRRU1rLKJ8=;GatewayHostName=10.137.187.79";
                 const string azureIotTestRootCertificateFilePath = "azure-iot-test-only.root.ca.cert.pem";
                 CertificateManager.InstallCACert(azureIotTestRootCertificateFilePath);
-                
+
                 _deviceClient = DeviceClient.CreateFromConnectionString(deviceConnectionString);
                 _deviceClient.SetMethodHandlerAsync("LeafDeviceDirectMethod", HelloWorldDirectMethodCallback, null);
             }
