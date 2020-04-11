@@ -50,8 +50,11 @@ namespace proxymodule
                 ModuleClient ioTHubModuleClient = await ModuleClient.CreateFromEnvironmentAsync(settings);
                 await ioTHubModuleClient.OpenAsync();
 
-                // Register callback to be called when a message is received by the module
+                // Register callback to be called when a message is received by the proxy module from leaf device.
                 await ioTHubModuleClient.SetInputMessageHandlerAsync("leafdeviceinput", PipeMessage, ioTHubModuleClient);
+
+                // Register callback to be called when a message is received by the proxy module from processing module.
+                await ioTHubModuleClient.SetInputMessageHandlerAsync("resultinput", ForwardMessageToLeafDevice, ioTHubModuleClient);
             }
             catch (Exception ex)
             {
@@ -60,34 +63,19 @@ namespace proxymodule
         }
 
         /// <summary>
-        /// This method is called whenever a leaf device sent a message to EdgeHub. 
-        /// It log the message, and send reply to leaf device.
+        /// This method is called whenever a leaf device sent a message to edge. 
         /// </summary>
-        static Task<MessageResponse> PipeMessage(Message message, object userContext)
+        static async Task<MessageResponse> PipeMessage(Message message, object userContext)
         {
-            string messageId = message.MessageId == null ? "": message.MessageId;
             var moduleClient = GetClientFromContext(userContext);
-
-            try
+            if(message.ContentType == "application/json")
             {
-                if(message.ContentType == "application/json")
-                {
-                    string messageString = Encoding.UTF8.GetString(message.GetBytes());
-                    Logger.Log($"{UtcDateTime} Received message {messageString} from app: {messageId}");
-                    var cloudTask = SendMessageToCloud(moduleClient, messageString, messageId);
-                    var deviceTask = SendMessageToLeafDevice(moduleClient, message.ConnectionDeviceId, "Hello from edge!");
-                }
-                else
-                {
-                    Logger.Log($"Undefined message content type received.", LogSeverity.Warning);
-                }
+                return await ForwardMessageToProcessingModule(message, moduleClient).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            else
             {
-                Logger.Log($"PipeMessage got exception {ex.Message}", LogSeverity.Error);
+                return await SendMessageToCloud(message, moduleClient).ConfigureAwait(false);
             }
-            
-            return Task.FromResult(MessageResponse.Completed);
         }
 
         static ModuleClient GetClientFromContext(object userContext)
@@ -101,19 +89,22 @@ namespace proxymodule
         }
 
         /// <summary>
-        /// This method will invoke direct method "LeafDeviceDirectMethod" on 
-        /// the device to send message from iotedge module to native windows application.
+        /// This method is called whenever a processing module send message for forwarding to leaf device.
+        /// It log the message, and forward message to leaf device.
         /// </summary>
-        static async Task SendMessageToLeafDevice(ModuleClient moduleClient, string deviceId, string receivedMessage)
+        static async Task<MessageResponse> ForwardMessageToLeafDevice(Message message, object userContext)
         {
             try
             {
-                string jString = JsonConvert.SerializeObject(receivedMessage);
-                var methodRequest = new MethodRequest("LeafDeviceDirectMethod", Encoding.UTF8.GetBytes(jString));
+                var moduleClient = GetClientFromContext(userContext);
+                string deviceId = message.Properties["deviceId"];
+                string receivedMessage = Encoding.UTF8.GetString(message.GetBytes());
+                Logger.Log($"{UtcDateTime} ForwardMessageToLeafDevice: Received message={receivedMessage}.");
+                var methodRequest = new MethodRequest("LeafDeviceDirectMethod", message.GetBytes());
                 var response = await moduleClient.InvokeMethodAsync(deviceId, methodRequest);
                 if(response.Status == 200)
                 {
-                    Logger.Log($"{UtcDateTime} Sent to app: {receivedMessage}.");
+                    Logger.Log($"{UtcDateTime} forwarded to leaf device.");
                 }
                 else
                 {
@@ -122,20 +113,49 @@ namespace proxymodule
             }
             catch (Exception ex)
             {
-                Logger.Log($"SendMessageToLeafDevice got exception {ex.Message}", LogSeverity.Error);
+                Logger.Log($"ForwardMessageToLeafDevice got exception {ex.Message}", LogSeverity.Error);
             }
+
+            return MessageResponse.Completed; 
         }
 
-        private static async Task SendMessageToCloud(ModuleClient moduleClient, string message, string messageId)
+        /// <summary>
+        /// This method is called whenever a proxy module received message from leaf device to forward to processing module.
+        /// It log the message, and forward message to processing module.
+        /// </summary>
+        private static async Task<MessageResponse> ForwardMessageToProcessingModule(Message messageFwd, ModuleClient moduleClient)
         {
-            using (var eventMessage = new Message(Encoding.UTF8.GetBytes(message)))
+            using(var message = new Message(messageFwd.GetBytes()))
             {
-                eventMessage.ContentEncoding = "utf-8";
-                eventMessage.ContentType = "application/json";
-                eventMessage.MessageId = messageId;
-                await moduleClient.SendEventAsync("cloudoutput", eventMessage).ConfigureAwait(false);
-                Logger.Log($"{UtcDateTime} Sent to cloud: {messageId}{message}");
+                string messageId = messageFwd.MessageId == null ? "": messageFwd.MessageId;
+                string messageString = Encoding.UTF8.GetString(message.GetBytes());
+                message.Properties.Add("deviceId", messageFwd.ConnectionDeviceId);
+                message.MessageId = messageId;
+                message.ContentEncoding = messageFwd.ContentEncoding;
+                message.ContentType = messageFwd.ContentType;
+                Logger.Log($"{UtcDateTime} Received message {messageString} from app: {messageId}");
+                await moduleClient
+                .SendEventAsync("processingoutput", message)
+                .ConfigureAwait(false);
             }
+
+            return MessageResponse.Completed;
+        }
+
+        /// <summary>
+        /// Send message to cloud.
+        /// It log the message, and forward message to cloud.
+        /// </summary>
+        private static async Task<MessageResponse> SendMessageToCloud(Message message, ModuleClient moduleClient)
+        {
+            string messageString = Encoding.UTF8.GetString(message.GetBytes());
+            Logger.Log($"{UtcDateTime} Message contenttype is not application/json, message={messageString} sent to cloud.");
+            message.Properties.Add("DeadLetter", "true");
+            await moduleClient
+                .SendEventAsync("cloudmessage", message)
+                .ConfigureAwait(false);
+
+            return MessageResponse.Completed;
         }
 
         private static string UtcDateTime
