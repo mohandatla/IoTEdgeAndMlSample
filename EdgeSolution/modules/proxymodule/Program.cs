@@ -98,9 +98,11 @@ namespace proxymodule
             {
                 var moduleClient = GetClientFromContext(userContext);
                 string deviceId = message.Properties["deviceId"];
-                string receivedMessage = Encoding.UTF8.GetString(message.GetBytes());
+                var messageData = message.GetBytes();
+                string receivedMessage = Encoding.UTF8.GetString(messageData);
+                string jString = JsonConvert.SerializeObject(receivedMessage);
                 Logger.Log($"{UtcDateTime} ForwardMessageToLeafDevice: Received message={receivedMessage}.");
-                var methodRequest = new MethodRequest("LeafDeviceDirectMethod", message.GetBytes());
+                var methodRequest = new MethodRequest("LeafDeviceDirectMethod", Encoding.UTF8.GetBytes(jString));
                 var response = await moduleClient.InvokeMethodAsync(deviceId, methodRequest);
                 if(response.Status == 200)
                 {
